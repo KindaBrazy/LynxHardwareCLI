@@ -6,7 +6,7 @@ or scripts.
 
 ## Features
 
-- **Cross-Platform (with caveats):** Built with .NET 8, aiming for compatibility with Windows, Linux, and macOS.
+- **Cross-Platform:** Built with .NET 8, aiming for compatibility with Windows, Linux, and macOS.
     * **Windows:** Fullest support for hardware detection.
     * **Linux:** Good support, may require elevated privileges for full data access.
     * **macOS:** Limited hardware data due to OS restrictions on direct hardware access.
@@ -105,62 +105,6 @@ sudo ./LynxHardwareCLI --components all
 ````
 
 On Windows, running as Administrator might provide more detailed information in some cases.
-
-## Output Format
-
-The application outputs a JSON object with the following structure:
-
-```shell
-{
-  "Timestamp": "YYYY-MM-DDTHH:mm:ss.ffffffZ",
-  "CPU": [
-    {
-      "Name": "Processor Name",
-      "HardwareType": "CPU",
-      "Sensors": [
-        {
-          "Name": "CPU Total",
-          "Value": 25.5,
-          "Type": "Load",
-          "Unit": "%",
-          "Identifier": "/amdcpu/0/load/0"
-        }
-        // ... other CPU sensors ...
-      ],
-      "SubHardware": [
-        // CPU Cores
-        {
-          "Name": "CPU Core #1",
-          "HardwareType": "CPU Core",
-          "Sensors": [
-            /* ... core sensors ... */
-          ],
-          "SubHardware": []
-        }
-        // ... other cores ...
-      ]
-    }
-  ],
-  "GPU": [
-    /* ... GPU information ... */
-  ],
-  "Memory": [
-    /* ... Memory information ... */
-  ],
-  "Motherboard": [
-    /* ... Motherboard information ... */
-  ],
-  "Storage": [
-    /* ... Storage information (if detected) ... */
-  ],
-  "Network": [
-    /* ... Network adapter information (if detected) ... */
-  ]
-}
-```
-
-*Note: `Storage` and `Network` sections might be empty if `LibreHardwareMonitorLib` cannot detect these components or
-their sensors on your system.*
 
 ## Technologies Used
 
