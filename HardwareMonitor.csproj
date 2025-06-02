@@ -6,6 +6,16 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <ApplicationIcon>256x256.ico</ApplicationIcon>
+        <AssemblyName>LynxHardwareCLI</AssemblyName>
+        <RootNamespace>LynxHardwareCLI</RootNamespace>
+        <PackageId>LynxHardwareCLI</PackageId>
+        <Version>0.9.1</Version>
+        <Title>LynxHardwareCLI</Title>
+        <Authors>KindaBrazy</Authors>
+        <PackageLicenseUrl>https://github.com/KindaBrazy/LynxHardwareCLI/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/KindaBrazy/LynxHardwareCLI</RepositoryUrl>
+        <Company>KindaBrazy</Company>
+        <Product>LynxHardwareCLI</Product>
     </PropertyGroup>
 
     <ItemGroup>
