@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace HardwareMonitor;
+namespace LynxHardwareCLI;
 
 internal class Program
 {

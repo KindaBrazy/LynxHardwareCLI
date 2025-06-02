@@ -1,4 +1,4 @@
-﻿namespace HardwareMonitor;
+﻿namespace LynxHardwareCLI;
 
 public class SensorInfo
 {

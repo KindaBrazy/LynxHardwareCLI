@@ -16,6 +16,9 @@
         <RepositoryUrl>https://github.com/KindaBrazy/LynxHardwareCLI</RepositoryUrl>
         <Company>KindaBrazy</Company>
         <Product>LynxHardwareCLI</Product>
+        <Description>A command-line interface for monitoring hardware using LibreHardwareMonitorLib.</Description>
+        <PackageTags>hardware;monitor;cli;librehardwaremonitor</PackageTags>
+        <Copyright>Copyright © KindaBrazy 2025</Copyright>
     </PropertyGroup>
 
     <ItemGroup>

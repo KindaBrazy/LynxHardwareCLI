@@ -1,6 +1,6 @@
 ﻿using LibreHardwareMonitor.Hardware;
 
-namespace HardwareMonitor;
+namespace LynxHardwareCLI;
 
 public class HardwareMonitorService : IDisposable
 {
