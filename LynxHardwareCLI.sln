@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HardwareMonitor", "HardwareMonitor.csproj", "{0F57ADC8-0C70-4F19-9DEB-F1B4BD83E914}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LynxHardwareCLI", "LynxHardwareCLI.csproj", "{0F57ADC8-0C70-4F19-9DEB-F1B4BD83E914}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
