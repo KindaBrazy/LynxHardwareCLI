@@ -8,7 +8,6 @@ on:
         required: true
         default: 'v0.9.1'
 
-
 env:
   PROJECT_NAME_FIXED: LynxHardwareCLI
 
@@ -59,24 +58,73 @@ jobs:
       - name: Build and Publish (Framework-Dependent)
         run: dotnet build LynxHardwareCLI.csproj -c Release -r ${{ matrix.rid }} --output ./publish_output/${{ matrix.rid }} --self-contained false
 
-      - name: Ensure Git tools are in PATH (Windows)
+      - name: Archive build output (Windows)
         if: runner.os == 'Windows'
-
-        run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
+        run: |
+          $ProjectName = "${{ env.PROJECT_NAME_FIXED }}"
+          $Version = "${{ github.event.inputs.projectVersion }}"
+          $Rid = "${{ matrix.rid }}"
+          $ExeName = "${{ matrix.exe_name }}"
 
-      - name: Archive build output
+          $ContentToZipPath = Join-Path -Path "${{ github.workspace }}" -ChildPath "publish_output/${Rid}"
+          $ArchiveDestDirPath = Join-Path -Path "${{ github.workspace }}" -ChildPath "publish_output"
+
+          if ([string]::IsNullOrEmpty($ProjectName)) {
+            Write-Error "Error: PROJECT_NAME is empty. Cannot create archive name."
+            exit 1 
+          }
+          $ArchiveName = "${ProjectName}-${Rid}-${Version}.zip"
+          $FullArchivePath = Join-Path -Path $ArchiveDestDirPath -ChildPath $ArchiveName
+
+          Write-Host "Project Name: $ProjectName"
+          Write-Host "Version: $Version"
+          Write-Host "RID: $Rid"
+          Write-Host "Directory to zip contents from: $ContentToZipPath"
+          Write-Host "Archive will be created at: $FullArchivePath"
+          Write-Host "Executable Name: $ExeName"
+
+          if (-not (Test-Path -Path $ContentToZipPath -PathType Container)) {
+            Write-Error "Error: Publish output directory $ContentToZipPath not found."
+            Write-Host "Listing contents of ${{ github.workspace }}/publish_output/:"
+            Get-ChildItem -Path (Join-Path -Path "${{ github.workspace }}" -ChildPath "publish_output") -Recurse -ErrorAction SilentlyContinue | Select-Object FullName
+            Write-Host "Listing contents of ${{ github.workspace }}/:"
+            Get-ChildItem -Path "${{ github.workspace }}" -Recurse -ErrorAction SilentlyContinue | Select-Object FullName
+            exit 1
+          }
+
+          $ExePath = Join-Path -Path $ContentToZipPath -ChildPath $ExeName
+          if (-not (Test-Path -Path $ExePath -PathType Leaf)) {
+            Write-Error "Error: Executable $ExeName not found in $ContentToZipPath"
+            Write-Host "Listing contents of $ContentToZipPath:"
+            Get-ChildItem -Path $ContentToZipPath -Recurse -ErrorAction SilentlyContinue | Select-Object FullName
+            exit 1
+          }
+
+          if (-not (Get-ChildItem -Path $ContentToZipPath)) {
+            Write-Error "Error: No files found in $ContentToZipPath to zip."
+            exit 1
+          }
+          
+          Compress-Archive -Path (Get-ChildItem -Path $ContentToZipPath).FullName -DestinationPath $FullArchivePath -Force
+          
+          
+          echo "ASSET_PATH=$FullArchivePath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "ASSET_NAME=$ArchiveName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Archived successfully: $FullArchivePath"
+
+      - name: Archive build output (Linux/macOS)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
-          
           PROJECT_NAME="${{ env.PROJECT_NAME_FIXED }}"
           VERSION="${{ github.event.inputs.projectVersion }}"
           RID="${{ matrix.rid }}"
+          EXE_NAME="${{ matrix.exe_name }}" 
           
           CONTENT_TO_ZIP_PATH="${GITHUB_WORKSPACE}/publish_output/${RID}"
           ARCHIVE_DEST_DIR_PATH="${GITHUB_WORKSPACE}/publish_output"
-          
-          
+
           if [ -z "$PROJECT_NAME" ]; then
             echo "Error: PROJECT_NAME is empty. Cannot create archive name."
             exit 1
@@ -89,27 +137,25 @@ jobs:
           echo "RID: $RID"
           echo "Directory to zip contents from: $CONTENT_TO_ZIP_PATH"
           echo "Archive will be created at: $FULL_ARCHIVE_PATH"
-          echo "Executable Name: ${{ matrix.exe_name }}"
-          
+          echo "Executable Name: $EXE_NAME" 
           
           if [ ! -d "${CONTENT_TO_ZIP_PATH}" ]; then
             echo "Error: Publish output directory ${CONTENT_TO_ZIP_PATH} not found."
             echo "Listing contents of ${GITHUB_WORKSPACE}/publish_output/:"
-            ls -R "${GITHUB_WORKSPACE}/publish_output"
+            ls -R "${GITHUB_WORKSPACE}/publish_output" || echo "Failed to list publish_output"
             echo "Listing contents of ${GITHUB_WORKSPACE}/:"
-            ls -R "${GITHUB_WORKSPACE}"
+            ls -R "${GITHUB_WORKSPACE}" || echo "Failed to list GITHUB_WORKSPACE"
             exit 1
           fi
           
-          if [ ! -f "${CONTENT_TO_ZIP_PATH}/${{ matrix.exe_name }}" ]; then
-            echo "Error: Executable ${{ matrix.exe_name }} not found in ${CONTENT_TO_ZIP_PATH}"
+          if [ ! -f "${CONTENT_TO_ZIP_PATH}/${EXE_NAME}" ]; then 
+            echo "Error: Executable ${EXE_NAME} not found in ${CONTENT_TO_ZIP_PATH}"
             echo "Listing contents of ${CONTENT_TO_ZIP_PATH}:"
-            ls -R "${CONTENT_TO_ZIP_PATH}"
+            ls -R "${CONTENT_TO_ZIP_PATH}" || echo "Failed to list CONTENT_TO_ZIP_PATH"
             exit 1
           fi
           
           cd "${CONTENT_TO_ZIP_PATH}"
-          
           if [ -z "$(ls -A .)" ]; then
             echo "Error: No files found in ${CONTENT_TO_ZIP_PATH} to zip."
             cd "${GITHUB_WORKSPACE}" 
@@ -152,17 +198,16 @@ jobs:
           TAG_NAME: ${{ github.event.inputs.projectVersion }}
         run: |
           echo "Creating draft release for tag: $TAG_NAME"
-          
+
           gh release create "$TAG_NAME" \
             --draft \
             --title "Release $TAG_NAME" \
             --notes "Draft release for ${{ env.PROJECT_NAME_FIXED }} version $TAG_NAME. Build artifacts for Windows, Linux, and macOS are attached."
 
           echo "Uploading assets from ./release_assets/ to release $TAG_NAME"
-
+          
           for artifact_collection_dir in ./release_assets/*; do
             if [ -d "$artifact_collection_dir" ]; then
-          
               asset_file_name=$(basename "$artifact_collection_dir") 
               asset_file_path="$artifact_collection_dir/$asset_file_name"
 
