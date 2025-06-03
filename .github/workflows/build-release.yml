@@ -58,7 +58,6 @@ jobs:
 
       - name: Build and Publish (Framework-Dependent)
         run: dotnet build -c Release -r ${{ matrix.rid }} --output ./publish_output/${{ matrix.rid }} --self-contained false
-        working-directory: ./LynxHardwareCLI
 
       - name: Set Project Name (Fixed)
         id: project_name
@@ -141,7 +140,7 @@ jobs:
           echo "Uploading assets from ./release_assets/ to release $TAG_NAME"
           
           
-          for artifact_collection_dir in ./release_assets/*; do
+          for artifact_collection_dir in ./release_assets/*; dos
             if [ -d "$artifact_collection_dir" ]; then
           
           
