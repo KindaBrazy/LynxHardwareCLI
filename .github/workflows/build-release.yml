@@ -68,12 +68,11 @@ jobs:
           PROJECT_NAME=${{ steps.project_name.outputs.name }}
           VERSION=${{ github.event.inputs.projectVersion }}
           RID=${{ matrix.rid }}
-          PROJECT_SUBDIR="LynxHardwareCLI"
           
           
-          CONTENT_TO_ZIP_PATH="${GITHUB_WORKSPACE}/${PROJECT_SUBDIR}/publish_output/${RID}"
+          CONTENT_TO_ZIP_PATH="${GITHUB_WORKSPACE}/publish_output/${RID}"
           
-          ARCHIVE_DEST_DIR_PATH="${GITHUB_WORKSPACE}/${PROJECT_SUBDIR}/publish_output"
+          ARCHIVE_DEST_DIR_PATH="${GITHUB_WORKSPACE}/publish_output"
           ARCHIVE_NAME="${PROJECT_NAME}-${RID}-${VERSION}.zip"
           FULL_ARCHIVE_PATH="${ARCHIVE_DEST_DIR_PATH}/${ARCHIVE_NAME}"
 
