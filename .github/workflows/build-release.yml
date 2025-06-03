@@ -72,7 +72,7 @@ jobs:
 
           if ([string]::IsNullOrEmpty($ProjectName)) {
             Write-Error "Error: PROJECT_NAME is empty. Cannot create archive name."
-            exit 1 
+            exit 1
           }
           $ArchiveName = "${ProjectName}-${Rid}-${Version}.zip"
           $FullArchivePath = Join-Path -Path $ArchiveDestDirPath -ChildPath $ArchiveName
@@ -96,7 +96,7 @@ jobs:
           $ExePath = Join-Path -Path $ContentToZipPath -ChildPath $ExeName
           if (-not (Test-Path -Path $ExePath -PathType Leaf)) {
             Write-Error "Error: Executable $ExeName not found in $ContentToZipPath"
-            Write-Host "Listing contents of $ContentToZipPath:"
+            Write-Host "Listing contents of ${ContentToZipPath}:"
             Get-ChildItem -Path $ContentToZipPath -Recurse -ErrorAction SilentlyContinue | Select-Object FullName
             exit 1
           }
@@ -107,8 +107,7 @@ jobs:
           }
           
           Compress-Archive -Path (Get-ChildItem -Path $ContentToZipPath).FullName -DestinationPath $FullArchivePath -Force
-          
-          
+
           echo "ASSET_PATH=$FullArchivePath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           echo "ASSET_NAME=$ArchiveName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           Write-Host "Archived successfully: $FullArchivePath"
@@ -120,7 +119,7 @@ jobs:
           PROJECT_NAME="${{ env.PROJECT_NAME_FIXED }}"
           VERSION="${{ github.event.inputs.projectVersion }}"
           RID="${{ matrix.rid }}"
-          EXE_NAME="${{ matrix.exe_name }}" 
+          EXE_NAME="${{ matrix.exe_name }}"
           
           CONTENT_TO_ZIP_PATH="${GITHUB_WORKSPACE}/publish_output/${RID}"
           ARCHIVE_DEST_DIR_PATH="${GITHUB_WORKSPACE}/publish_output"
@@ -137,7 +136,7 @@ jobs:
           echo "RID: $RID"
           echo "Directory to zip contents from: $CONTENT_TO_ZIP_PATH"
           echo "Archive will be created at: $FULL_ARCHIVE_PATH"
-          echo "Executable Name: $EXE_NAME" 
+          echo "Executable Name: $EXE_NAME"
           
           if [ ! -d "${CONTENT_TO_ZIP_PATH}" ]; then
             echo "Error: Publish output directory ${CONTENT_TO_ZIP_PATH} not found."
@@ -148,7 +147,7 @@ jobs:
             exit 1
           fi
           
-          if [ ! -f "${CONTENT_TO_ZIP_PATH}/${EXE_NAME}" ]; then 
+          if [ ! -f "${CONTENT_TO_ZIP_PATH}/${EXE_NAME}" ]; then
             echo "Error: Executable ${EXE_NAME} not found in ${CONTENT_TO_ZIP_PATH}"
             echo "Listing contents of ${CONTENT_TO_ZIP_PATH}:"
             ls -R "${CONTENT_TO_ZIP_PATH}" || echo "Failed to list CONTENT_TO_ZIP_PATH"
