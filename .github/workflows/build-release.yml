@@ -181,45 +181,67 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: ./release_assets/
+          path: ./temp_release_assets/
 
-      - name: List downloaded artifacts structure
+      - name: List downloaded artifacts structure (before restructuring)
         run: |
-          echo "Listing contents of ./release_assets/:"
+          echo "Listing contents of ./temp_release_assets/:"
+          ls -R ./temp_release_assets/
+          echo "---"
+
+      - name: Restructure downloaded artifacts
+        id: restructure
+        run: |
+          mkdir -p ./release_assets
+          shopt -s nullglob # Prevent errors if no artifact directories are found
+          for artifact_dir in ./temp_release_assets/*; do
+            if [ -d "$artifact_dir" ]; then
+              # Move the actual asset file(s) from inside the artifact_dir to release_assets
+              # This assumes each artifact_dir contains one or more files that are the actual assets.
+              # Given default download behavior, this will be artifact_name_dir/artifact_name_file
+              echo "Processing artifact directory: $artifact_dir"
+              mv "$artifact_dir"/* ./release_assets/
+            fi
+          done
+          rm -rf ./temp_release_assets
+          echo "Listing contents of ./release_assets/ (after restructuring):"
           ls -R ./release_assets/
+          echo "---"
 
       - name: Create Draft Release and Upload Assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.event.inputs.projectVersion }}
+          PROJECT_NAME_FIXED: ${{ env.PROJECT_NAME_FIXED }}
         run: |
-          echo "Creating draft release for tag: $TAG_NAME"
-
+          echo "Creating draft release for tag: $TAG_NAME on repo $GITHUB_REPOSITORY"
+          
           gh release create "$TAG_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
             --draft \
             --title "Release $TAG_NAME" \
-            --notes "Draft release for ${{ env.PROJECT_NAME_FIXED }} version $TAG_NAME. Build artifacts for Windows, Linux, and macOS are attached."
-
+            --notes "Draft release for ${PROJECT_NAME_FIXED} version $TAG_NAME. Build artifacts for Windows, Linux, and macOS are attached."
+          
           echo "Uploading assets from ./release_assets/ to release $TAG_NAME"
           
-          for artifact_collection_dir in ./release_assets/*; do
-            if [ -d "$artifact_collection_dir" ]; then
-              asset_file_name=$(basename "$artifact_collection_dir") 
-              asset_file_path="$artifact_collection_dir/$asset_file_name"
-
-              if [ -f "$asset_file_path" ]; then
-                echo "Uploading asset: $asset_file_path"
-                gh release upload "$TAG_NAME" "$asset_file_path" --clobber
-              else
-                echo "Warning: Expected asset file $asset_file_path not found in $artifact_collection_dir."
-                echo "Listing contents of $artifact_collection_dir:"
-                ls -la "$artifact_collection_dir"
-              fi
+          if [ -z "$(ls -A ./release_assets)" ]; then
+            echo "No assets found in ./release_assets to upload."
+            exit 1 # Or handle as a non-error if appropriate
+          fi
+          
+          for asset_file_path in ./release_assets/*; do
+            if [ -f "$asset_file_path" ]; then
+              asset_file_name=$(basename "$asset_file_path")
+              echo "Uploading asset: $asset_file_path (as $asset_file_name)"
+              gh release upload "$TAG_NAME" "$asset_file_path" --repo "$GITHUB_REPOSITORY" --clobber
             else
-              echo "Warning: Found item $artifact_collection_dir which is not a directory as expected."
+              echo "Warning: Found item $asset_file_path in ./release_assets which is not a file. Skipping."
             fi
           done
           echo "Draft release $TAG_NAME created and assets uploaded successfully."
