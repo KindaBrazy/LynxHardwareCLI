@@ -8,6 +8,10 @@ on:
         required: true
         default: 'v0.9.1'
 
+
+env:
+  PROJECT_NAME_FIXED: LynxHardwareCLI
+
 jobs:
   build_and_package:
     name: Build for ${{ matrix.os_name_display }} (${{ matrix.rid }})
@@ -15,7 +19,6 @@ jobs:
     strategy:
       matrix:
         include:
-
           - os_name_display: Windows
             os_image: windows-latest
             rid: win-x64
@@ -24,7 +27,6 @@ jobs:
             os_image: windows-latest
             rid: win-arm64
             exe_name: LynxHardwareCLI.exe
-
           - os_name_display: Linux
             os_image: ubuntu-latest
             rid: linux-x64
@@ -33,7 +35,6 @@ jobs:
             os_image: ubuntu-latest
             rid: linux-arm64
             exe_name: LynxHardwareCLI
-
           - os_name_display: macOS
             os_image: macos-latest
             rid: osx-x64
@@ -58,21 +59,28 @@ jobs:
       - name: Build and Publish (Framework-Dependent)
         run: dotnet build LynxHardwareCLI.csproj -c Release -r ${{ matrix.rid }} --output ./publish_output/${{ matrix.rid }} --self-contained false
 
-      - name: Set Project Name (Fixed)
-        id: project_name
-        run: echo "name=LynxHardwareCLI" >> $GITHUB_OUTPUT
+      - name: Ensure Git tools are in PATH (Windows)
+        if: runner.os == 'Windows'
+
+        run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
 
       - name: Archive build output
         shell: bash
         run: |
-          PROJECT_NAME=${{ steps.project_name.outputs.name }}
-          VERSION=${{ github.event.inputs.projectVersion }}
-          RID=${{ matrix.rid }}
           
+          PROJECT_NAME="${{ env.PROJECT_NAME_FIXED }}"
+          VERSION="${{ github.event.inputs.projectVersion }}"
+          RID="${{ matrix.rid }}"
           
           CONTENT_TO_ZIP_PATH="${GITHUB_WORKSPACE}/publish_output/${RID}"
-          
           ARCHIVE_DEST_DIR_PATH="${GITHUB_WORKSPACE}/publish_output"
+          
+          
+          if [ -z "$PROJECT_NAME" ]; then
+            echo "Error: PROJECT_NAME is empty. Cannot create archive name."
+            exit 1
+          fi
           ARCHIVE_NAME="${PROJECT_NAME}-${RID}-${VERSION}.zip"
           FULL_ARCHIVE_PATH="${ARCHIVE_DEST_DIR_PATH}/${ARCHIVE_NAME}"
 
@@ -84,6 +92,15 @@ jobs:
           echo "Executable Name: ${{ matrix.exe_name }}"
           
           
+          if [ ! -d "${CONTENT_TO_ZIP_PATH}" ]; then
+            echo "Error: Publish output directory ${CONTENT_TO_ZIP_PATH} not found."
+            echo "Listing contents of ${GITHUB_WORKSPACE}/publish_output/:"
+            ls -R "${GITHUB_WORKSPACE}/publish_output"
+            echo "Listing contents of ${GITHUB_WORKSPACE}/:"
+            ls -R "${GITHUB_WORKSPACE}"
+            exit 1
+          fi
+          
           if [ ! -f "${CONTENT_TO_ZIP_PATH}/${{ matrix.exe_name }}" ]; then
             echo "Error: Executable ${{ matrix.exe_name }} not found in ${CONTENT_TO_ZIP_PATH}"
             echo "Listing contents of ${CONTENT_TO_ZIP_PATH}:"
@@ -91,8 +108,14 @@ jobs:
             exit 1
           fi
           
-          
           cd "${CONTENT_TO_ZIP_PATH}"
+          
+          if [ -z "$(ls -A .)" ]; then
+            echo "Error: No files found in ${CONTENT_TO_ZIP_PATH} to zip."
+            cd "${GITHUB_WORKSPACE}" 
+            exit 1
+          fi
+
           zip -r "${FULL_ARCHIVE_PATH}" .
           cd "${GITHUB_WORKSPACE}" 
 
@@ -129,20 +152,18 @@ jobs:
           TAG_NAME: ${{ github.event.inputs.projectVersion }}
         run: |
           echo "Creating draft release for tag: $TAG_NAME"
-
+          
           gh release create "$TAG_NAME" \
             --draft \
             --title "Release $TAG_NAME" \
-            --notes "Draft release for LynxHardwareCLI version $TAG_NAME. Build artifacts for Windows, Linux, and macOS are attached."
+            --notes "Draft release for ${{ env.PROJECT_NAME_FIXED }} version $TAG_NAME. Build artifacts for Windows, Linux, and macOS are attached."
 
           echo "Uploading assets from ./release_assets/ to release $TAG_NAME"
-          
-          
-          for artifact_collection_dir in ./release_assets/*; dos
+
+          for artifact_collection_dir in ./release_assets/*; do
             if [ -d "$artifact_collection_dir" ]; then
           
-          
-              asset_file_name=$(basename "$artifact_collection_dir")
+              asset_file_name=$(basename "$artifact_collection_dir") 
               asset_file_path="$artifact_collection_dir/$asset_file_name"
 
               if [ -f "$asset_file_path" ]; then
@@ -153,6 +174,8 @@ jobs:
                 echo "Listing contents of $artifact_collection_dir:"
                 ls -la "$artifact_collection_dir"
               fi
+            else
+              echo "Warning: Found item $artifact_collection_dir which is not a directory as expected."
             fi
           done
           echo "Draft release $TAG_NAME created and assets uploaded successfully."
