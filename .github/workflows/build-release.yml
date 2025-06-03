@@ -2,6 +2,11 @@
 
 on:
   workflow_dispatch:
+    inputs:
+      projectVersion:
+        description: 'Project version for the release'
+        required: true
+        default: 'v0.9.1'
 
 jobs:
   build_and_package:
@@ -11,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows
+
           - os_name_display: Windows
             os_image: windows-latest
             rid: win-x64
@@ -20,7 +25,7 @@ jobs:
             os_image: windows-latest
             rid: win-arm64
             exe_name: LynxHardwareCLI.exe
-          # Linux
+
           - os_name_display: Linux
             os_image: ubuntu-latest
             rid: linux-x64
@@ -29,7 +34,7 @@ jobs:
             os_image: ubuntu-latest
             rid: linux-arm64
             exe_name: LynxHardwareCLI
-          # macOS
+
           - os_name_display: macOS
             os_image: macos-latest
             rid: osx-x64
@@ -48,20 +53,6 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Extract Project Version from .csproj
-        id: get_version
-        shell: pwsh
-        run: |
-          $csprojPath = "./LynxHardwareCLI/LynxHardwareCLI.csproj" # Relative to GITHUB_WORKSPACE
-          $version = (Select-Xml -Path $csprojPath -XPath "/Project/PropertyGroup/Version").Node.InnerText
-          If ([string]::IsNullOrWhiteSpace($version)) {
-            Write-Error "Version could not be extracted from csproj file: $csprojPath"
-            exit 1
-          }
-          $versionTag = "v$($version)" # Prepend 'v'
-          echo "PROJECT_VERSION=$versionTag" >> $env:GITHUB_ENV
-          Write-Host "Extracted project version for artifacts and tag: $versionTag"
-
       - name: Restore dependencies
         run: dotnet restore LynxHardwareCLI.csproj
         working-directory: ./LynxHardwareCLI
@@ -76,35 +67,38 @@ jobs:
 
       - name: Archive build output
         shell: bash
-        env:
-          VERSION_FROM_CSPROJ: ${{ env.PROJECT_VERSION }}
         run: |
           PROJECT_NAME=${{ steps.project_name.outputs.name }}
-          VERSION=${VERSION_FROM_CSPROJ}
+          VERSION=${{ github.event.inputs.projectVersion }}
           RID=${{ matrix.rid }}
           PROJECT_SUBDIR="LynxHardwareCLI"
-
+          
+          
           CONTENT_TO_ZIP_PATH="${GITHUB_WORKSPACE}/${PROJECT_SUBDIR}/publish_output/${RID}"
-          ARCHIVE_DEST_DIR_PATH="${GITHUB_WORKSPACE}/${PROJECT_SUBDIR}/publish_output" # Place archive alongside RID folder
-          ARCHIVE_NAME="${PROJECT_NAME}-${RID}-${VERSION}.zip" # e.g., LynxHardwareCLI-win-x64-v0.9.1.zip
+          
+          ARCHIVE_DEST_DIR_PATH="${GITHUB_WORKSPACE}/${PROJECT_SUBDIR}/publish_output"
+          ARCHIVE_NAME="${PROJECT_NAME}-${RID}-${VERSION}.zip"
           FULL_ARCHIVE_PATH="${ARCHIVE_DEST_DIR_PATH}/${ARCHIVE_NAME}"
 
           echo "Project Name: $PROJECT_NAME"
-          echo "Version from csproj (with v prefix): $VERSION"
+          echo "Version: $VERSION"
           echo "RID: $RID"
           echo "Directory to zip contents from: $CONTENT_TO_ZIP_PATH"
           echo "Archive will be created at: $FULL_ARCHIVE_PATH"
           echo "Executable Name: ${{ matrix.exe_name }}"
-
+          
+          
           if [ ! -f "${CONTENT_TO_ZIP_PATH}/${{ matrix.exe_name }}" ]; then
             echo "Error: Executable ${{ matrix.exe_name }} not found in ${CONTENT_TO_ZIP_PATH}"
+            echo "Listing contents of ${CONTENT_TO_ZIP_PATH}:"
             ls -R "${CONTENT_TO_ZIP_PATH}"
             exit 1
           fi
-
+          
+          
           cd "${CONTENT_TO_ZIP_PATH}"
           zip -r "${FULL_ARCHIVE_PATH}" .
-          cd "${GITHUB_WORKSPACE}"
+          cd "${GITHUB_WORKSPACE}" 
 
           echo "ASSET_PATH=${FULL_ARCHIVE_PATH}" >> $GITHUB_ENV
           echo "ASSET_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
@@ -123,23 +117,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout code (to read version from .csproj again)
-        uses: actions/checkout@v4
-
-      - name: Extract Project Version for Tag from .csproj
-        id: get_version_for_tag
-        shell: pwsh
-        run: |
-          $csprojPath = "./LynxHardwareCLI/LynxHardwareCLI.csproj"
-          $version = (Select-Xml -Path $csprojPath -XPath "/Project/PropertyGroup/Version").Node.InnerText
-          If ([string]::IsNullOrWhiteSpace($version)) {
-            Write-Error "Version could not be extracted from csproj file: $csprojPath for tagging."
-            exit 1
-          }
-          $versionTag = "v$($version)" # Prepend 'v'
-          echo "TAG_NAME=$versionTag" >> $env:GITHUB_ENV
-          Write-Host "Using Tag for Release: $versionTag"
-
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -153,24 +130,31 @@ jobs:
       - name: Create Draft Release and Upload Assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.event.inputs.projectVersion }}
         run: |
           echo "Creating draft release for tag: $TAG_NAME"
 
           gh release create "$TAG_NAME" \
             --draft \
             --title "Release $TAG_NAME" \
-            --notes "Draft release for LynxHardwareCLI version $TAG_NAME. Build artifacts attached."
+            --notes "Draft release for LynxHardwareCLI version $TAG_NAME. Build artifacts for Windows, Linux, and macOS are attached."
 
           echo "Uploading assets from ./release_assets/ to release $TAG_NAME"
+          
+          
           for artifact_collection_dir in ./release_assets/*; do
             if [ -d "$artifact_collection_dir" ]; then
+          
+          
               asset_file_name=$(basename "$artifact_collection_dir")
               asset_file_path="$artifact_collection_dir/$asset_file_name"
+
               if [ -f "$asset_file_path" ]; then
                 echo "Uploading asset: $asset_file_path"
                 gh release upload "$TAG_NAME" "$asset_file_path" --clobber
               else
                 echo "Warning: Expected asset file $asset_file_path not found in $artifact_collection_dir."
+                echo "Listing contents of $artifact_collection_dir:"
                 ls -la "$artifact_collection_dir"
               fi
             fi
