@@ -13,7 +13,6 @@ jobs:
     name: Build for ${{ matrix.os_name_display }} (${{ matrix.rid }})
     runs-on: ${{ matrix.os_image }}
     strategy:
-      fail-fast: false
       matrix:
         include:
 
@@ -57,7 +56,7 @@ jobs:
         run: dotnet restore
 
       - name: Build and Publish (Framework-Dependent)
-        run: dotnet build -c Release -r ${{ matrix.rid }} --output ./publish_output/${{ matrix.rid }} --self-contained false
+        run: dotnet build LynxHardwareCLI.csproj -c Release -r ${{ matrix.rid }} --output ./publish_output/${{ matrix.rid }} --self-contained false
 
       - name: Set Project Name (Fixed)
         id: project_name
