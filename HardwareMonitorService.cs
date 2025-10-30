@@ -112,8 +112,6 @@ public class HardwareMonitorService : IDisposable
         {
             var sensorValue = sensor.Value;
             
-            // --- FIX IS HERE ---
-            // Sanitize the sensor value. If it's infinity or NaN, serialize it as null.
             float? sanitizedValue = (sensorValue.HasValue && !float.IsInfinity(sensorValue.Value) && !float.IsNaN(sensorValue.Value))
                 ? sensorValue
                 : null;
@@ -121,7 +119,7 @@ public class HardwareMonitorService : IDisposable
             info.Sensors.Add(new SensorInfo
             {
                 Name = sensor.Name,
-                Value = sanitizedValue, // Use the sanitized value
+                Value = sanitizedValue,
                 Type = sensor.SensorType.ToString(),
                 Unit = GetSensorUnit(sensor),
                 Identifier = sensor.Identifier.ToString()
