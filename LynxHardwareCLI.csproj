@@ -9,7 +9,7 @@
         <AssemblyName>LynxHardwareCLI</AssemblyName>
         <RootNamespace>LynxHardwareCLI</RootNamespace>
         <PackageId>LynxHardwareCLI</PackageId>
-        <Version>0.9.1</Version>
+        <Version>0.10.0</Version>
         <Title>LynxHardwareCLI</Title>
         <Authors>KindaBrazy</Authors>
         <PackageLicenseUrl>https://github.com/KindaBrazy/LynxHardwareCLI/blob/master/LICENSE</PackageLicenseUrl>
