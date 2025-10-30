@@ -1,12 +1,12 @@
 ﻿# LynxHardwareCLI .NET Monitor
 
-A .NET 8 console application designed to retrieve and display hardware information from your system using
+A .NET 9 console application designed to retrieve and display hardware information from your system using
 `LibreHardwareMonitorLib`. The output is provided in JSON format, making it easy to parse and integrate with other tools
 or scripts.
 
 ## Features
 
-- **Cross-Platform:** Built with .NET 8, aiming for compatibility with Windows, Linux, and macOS.
+- **Cross-Platform:** Built with .NET 9, aiming for compatibility with Windows, Linux, and macOS.
     * **Windows:** Fullest support for hardware detection.
     * **Linux:** Good support, may require elevated privileges for full data access.
     * **macOS:** Limited hardware data due to OS restrictions on direct hardware access.
@@ -25,10 +25,10 @@ or scripts.
 
 ## Prerequisites
 
-- **.NET 8.0 SDK or Runtime:**
-    * To build the project, you need the **.NET 8.0 SDK**.
-    * To run the compiled executable, users need the **.NET 8.0 Runtime** installed on their system.
-    * Download from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/8.0)
+- **.NET 9.0 SDK or Runtime:**
+    * To build the project, you need the **.NET 9.0 SDK**.
+    * To run the compiled executable, users need the **.NET 9.0 Runtime** installed on their system.
+    * Download from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/9.0)
 
 ## How to Build
 
@@ -45,8 +45,8 @@ or scripts.
    ```bash
    dotnet build LynxHardwareCLI.csproj -c Release
    ```
-   The executable will be located in `bin/Release/net8.0/LynxHardwareCLI.exe` (Windows) or
-   `bin/Release/net8.0/LynxHardwareCLI` (Linux/macOS).
+   The executable will be located in `bin/Release/net9.0/LynxHardwareCLI.exe` (Windows) or
+   `bin/Release/net9.0/LynxHardwareCLI` (Linux/macOS).
 
 ## How to Run
 
@@ -105,12 +105,6 @@ sudo ./LynxHardwareCLI --components all
 ````
 
 On Windows, running as Administrator might provide more detailed information in some cases.
-
-## Technologies Used
-
-- **.NET 8**
-- **LibreHardwareMonitorLib (0.9.4):** For accessing hardware information.
-- **System.Text.Json:** For JSON serialization.
 
 ## Compatibility Notes & Troubleshooting
 
