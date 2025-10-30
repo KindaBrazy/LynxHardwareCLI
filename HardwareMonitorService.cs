@@ -16,7 +16,11 @@ public class HardwareMonitorService : IDisposable
             IsGpuEnabled = true,
             IsMemoryEnabled = true,
             IsMotherboardEnabled = true,
-            IsStorageEnabled = true
+            IsStorageEnabled = true,
+            IsNetworkEnabled = true,
+            IsBatteryEnabled = true,
+            IsControllerEnabled = true,
+            IsPsuEnabled = true
         };
         _updateVisitor = new UpdateVisitor();
     }
@@ -58,7 +62,6 @@ public class HardwareMonitorService : IDisposable
             if (!_isOpen) return new HardwareReport { Timestamp = DateTime.UtcNow };
         }
 
-
         _computer.Accept(_updateVisitor);
 
         var report = new HardwareReport { Timestamp = DateTime.UtcNow };
@@ -67,45 +70,30 @@ public class HardwareMonitorService : IDisposable
             .ToHashSet();
 
         var processAll = activeComponents.Contains("all") || !activeComponents.Any();
-        if (processAll) activeComponents.UnionWith(new[] { "cpu", "gpu", "memory", "motherboard", "storage" });
+        if (processAll)
+            activeComponents.UnionWith(new[]
+                { "cpu", "gpu", "memory", "motherboard", "storage", "network", "battery", "controller", "psu" });
 
-        foreach (IHardware? hardware in _computer.Hardware)
+        foreach (IHardware hardware in _computer.Hardware)
         {
-            HardwareItemInfo? itemInfo = null;
-
-            switch (hardware.HardwareType)
+            var (targetList, componentName, itemType) = hardware.HardwareType switch
             {
-                case HardwareType.Cpu:
-                    if (processAll || activeComponents.Contains("cpu"))
-                        itemInfo = ProcessHardwareItem(hardware, "CPU");
-                    if (itemInfo != null) report.CPU.Add(itemInfo);
-                    break;
+                HardwareType.Cpu => (report.CPU, "cpu", "CPU"),
+                HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel => (report.GPU, "gpu", "GPU"),
+                HardwareType.Memory => (report.Memory, "memory", "Memory"),
+                HardwareType.Motherboard => (report.Motherboard, "motherboard", "Motherboard"),
+                HardwareType.Storage => (report.Storage, "storage", "Storage"),
+                HardwareType.Network => (report.Network, "network", "Network"),
+                HardwareType.Battery => (report.Battery, "battery", "Battery"),
+                HardwareType.EmbeddedController => (report.Controller, "controller", "Controller"),
+                HardwareType.Psu => (report.Psu, "psu", "PSU"),
+                _ => (null, null, null)
+            };
 
-                case HardwareType.GpuNvidia:
-                case HardwareType.GpuAmd:
-                case HardwareType.GpuIntel:
-                    if (processAll || activeComponents.Contains("gpu"))
-                        itemInfo = ProcessHardwareItem(hardware, "GPU");
-                    if (itemInfo != null) report.GPU.Add(itemInfo);
-                    break;
-
-                case HardwareType.Memory:
-                    if (processAll || activeComponents.Contains("memory"))
-                        itemInfo = ProcessHardwareItem(hardware, "Memory");
-                    if (itemInfo != null) report.Memory.Add(itemInfo);
-                    break;
-
-                case HardwareType.Motherboard:
-                    if (processAll || activeComponents.Contains("motherboard"))
-                        itemInfo = ProcessHardwareItem(hardware, "Motherboard");
-                    if (itemInfo != null) report.Motherboard.Add(itemInfo);
-                    break;
-
-                case HardwareType.Storage:
-                    if (processAll || activeComponents.Contains("storage"))
-                        itemInfo = ProcessHardwareItem(hardware, "Storage");
-                    if (itemInfo != null) report.Storage.Add(itemInfo);
-                    break;
+            if (targetList != null && activeComponents.Contains(componentName!))
+            {
+                HardwareItemInfo itemInfo = ProcessHardwareItem(hardware, itemType!);
+                targetList.Add(itemInfo);
             }
         }
 
@@ -117,59 +105,66 @@ public class HardwareMonitorService : IDisposable
         var info = new HardwareItemInfo
         {
             Name = hardwareItem.Name,
-            HardwareType = itemTypeOverride ?? hardwareItem.HardwareType.ToString()
+            HardwareType = itemTypeOverride
         };
 
-        foreach (ISensor? sensor in hardwareItem.Sensors)
+        foreach (ISensor sensor in hardwareItem.Sensors)
+        {
+            var sensorValue = sensor.Value;
+            
+            // --- FIX IS HERE ---
+            // Sanitize the sensor value. If it's infinity or NaN, serialize it as null.
+            float? sanitizedValue = (sensorValue.HasValue && !float.IsInfinity(sensorValue.Value) && !float.IsNaN(sensorValue.Value))
+                ? sensorValue
+                : null;
+
             info.Sensors.Add(new SensorInfo
             {
                 Name = sensor.Name,
-                Value = sensor.Value,
+                Value = sanitizedValue, // Use the sanitized value
                 Type = sensor.SensorType.ToString(),
                 Unit = GetSensorUnit(sensor),
                 Identifier = sensor.Identifier.ToString()
             });
+        }
 
-        if (hardwareItem.SubHardware != null)
-            foreach (IHardware? subHardware in hardwareItem.SubHardware)
-            {
-                var subItemType = subHardware.HardwareType.ToString();
-                if (hardwareItem.HardwareType == HardwareType.Cpu) subItemType = "CPU Core";
+        foreach (IHardware subHardware in hardwareItem.SubHardware)
+        {
+            var subItemType = subHardware.HardwareType.ToString();
+            if (hardwareItem.HardwareType == HardwareType.Cpu) subItemType = "CPU Core";
 
-                info.SubHardware.Add(ProcessHardwareItem(subHardware, subItemType));
-            }
+            info.SubHardware.Add(ProcessHardwareItem(subHardware, subItemType));
+        }
 
         return info;
     }
 
     private string GetSensorUnit(ISensor sensor)
     {
-        switch (sensor.SensorType)
+        return sensor.SensorType switch
         {
-            case SensorType.Voltage: return "V";
-            case SensorType.Current: return "A";
-            case SensorType.Power: return "W";
-            case SensorType.Clock: return "MHz";
-            case SensorType.Temperature: return "°C";
-            case SensorType.Load: return "%";
-            case SensorType.Frequency: return "Hz";
-            case SensorType.Fan: return "RPM";
-            case SensorType.Flow: return "L/h";
-            case SensorType.Control: return "%";
-            case SensorType.Level: return "%";
-            case SensorType.Factor: return "";
-            case SensorType.Data:
-            case SensorType.SmallData:
-                if (sensor.Name.Contains("GB", StringComparison.OrdinalIgnoreCase)) return "GB";
-                return "MB";
-            case SensorType.Throughput:
-                if (sensor.Name.Contains("GB/s", StringComparison.OrdinalIgnoreCase)) return "GB/s";
-                if (sensor.Name.Contains("MB/s", StringComparison.OrdinalIgnoreCase)) return "MB/s";
-                if (sensor.Name.Contains("KB/s", StringComparison.OrdinalIgnoreCase)) return "KB/s";
-                return "B/s";
-            case SensorType.Energy: return "Wh";
-            case SensorType.Noise: return "dBA";
-            default: return "";
-        }
+            SensorType.Voltage => "V",
+            SensorType.Current => "A",
+            SensorType.Power => "W",
+            SensorType.Clock => "MHz",
+            SensorType.Temperature => "°C",
+            SensorType.Load => "%",
+            SensorType.Frequency => "Hz",
+            SensorType.Fan => "RPM",
+            SensorType.Flow => "L/h",
+            SensorType.Control => "%",
+            SensorType.Level => "%",
+            SensorType.Energy => "Wh",
+            SensorType.Noise => "dBA",
+            SensorType.Data or SensorType.SmallData => sensor.Name.Contains("GB", StringComparison.OrdinalIgnoreCase) ? "GB" : "MB",
+            SensorType.Throughput => sensor.Name switch
+            {
+                var n when n.Contains("GB/s", StringComparison.OrdinalIgnoreCase) => "GB/s",
+                var n when n.Contains("MB/s", StringComparison.OrdinalIgnoreCase) => "MB/s",
+                var n when n.Contains("KB/s", StringComparison.OrdinalIgnoreCase) => "KB/s",
+                _ => "B/s"
+            },
+            _ => string.Empty
+        };
     }
 }

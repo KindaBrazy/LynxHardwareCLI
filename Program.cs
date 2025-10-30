@@ -4,7 +4,7 @@ namespace LynxHardwareCLI;
 
 internal class Program
 {
-    private static void Main(string[] args)
+    private static async Task Main(string[] args)
     {
         var mode = "once";
         var intervalMilliseconds = 1000;
@@ -80,7 +80,7 @@ internal class Program
         }
 
         var validComponents = new HashSet<string>
-            { "cpu", "gpu", "memory", "motherboard", "storage", "network", "all" };
+            { "cpu", "gpu", "memory", "motherboard", "storage", "network", "all", "battery", "controller", "psu" };
         foreach (var comp in componentsToInclude)
             if (!validComponents.Contains(comp))
             {
@@ -96,49 +96,41 @@ internal class Program
             WriteIndented = true
         };
 
-        using (var monitorService = new HardwareMonitorService())
+        using var monitorService = new HardwareMonitorService();
+        monitorService.Open();
+
+        if (mode == "once")
         {
-            monitorService.Open();
+            HardwareReport report = monitorService.GetHardwareReport(componentsToInclude);
+            var json = JsonSerializer.Serialize(report, jsonOptions);
+            Console.WriteLine(json);
+        }
+        else if (mode == "timed")
+        {
+            Console.WriteLine(
+                $"Starting timed monitoring. Interval: {intervalMilliseconds}ms. Components: {string.Join(", ", componentsToInclude)}. Press Ctrl+C to exit.");
 
-            if (mode == "once")
+            var cts = new CancellationTokenSource();
+            Console.CancelKeyPress += (_, eventArgs) =>
             {
-                HardwareReport report = monitorService.GetHardwareReport(componentsToInclude);
-                var json = JsonSerializer.Serialize(report, jsonOptions);
-                Console.WriteLine(json);
+                Console.WriteLine("\nExiting timed mode...");
+                eventArgs.Cancel = true;
+                cts.Cancel();
+            };
+
+            try
+            {
+                while (!cts.Token.IsCancellationRequested)
+                {
+                    HardwareReport report = monitorService.GetHardwareReport(componentsToInclude);
+                    var json = JsonSerializer.Serialize(report, jsonOptions);
+                    Console.WriteLine(json);
+                    await Task.Delay(intervalMilliseconds, cts.Token);
+                }
             }
-            else if (mode == "timed")
+            catch (OperationCanceledException)
             {
-                Console.WriteLine(
-                    $"Starting timed monitoring. Interval: {intervalMilliseconds}ms. Components: {string.Join(", ", componentsToInclude)}. Press Ctrl+C to exit.");
-
-                var cts = new CancellationTokenSource();
-                Console.CancelKeyPress += (_, eventArgs) =>
-                {
-                    Console.WriteLine("\nExiting timed mode...");
-                    eventArgs.Cancel = true;
-                    cts.Cancel();
-                };
-
-                try
-                {
-                    while (!cts.Token.IsCancellationRequested)
-                    {
-                        HardwareReport report = monitorService.GetHardwareReport(componentsToInclude);
-                        var json = JsonSerializer.Serialize(report, jsonOptions);
-                        Console.WriteLine(json);
-                        if (cts.Token.IsCancellationRequested) break;
-
-                        Task.Delay(intervalMilliseconds, cts.Token).Wait(cts.Token);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    Console.WriteLine("Timed mode operation cancelled.");
-                }
-                catch (AggregateException ae) when (ae.InnerExceptions.OfType<TaskCanceledException>().Any())
-                {
-                    Console.WriteLine("Timed mode task cancelled.");
-                }
+                Console.WriteLine("Timed mode operation cancelled.");
             }
         }
     }
@@ -146,17 +138,17 @@ internal class Program
     private static void PrintUsage()
     {
         Console.WriteLine(
-            "\nUsage: HardwareInfo.exe [--mode <once|timed>] [--interval <milliseconds>] [--components <list>]");
+            "\nUsage: LynxHardwareCLI.exe [--mode <once|timed>] [--interval <milliseconds>] [--components <list>]");
         Console.WriteLine(
-            "  <list> is a comma or semicolon separated list of: cpu,gpu,memory,motherboard,storage,network,all");
+            "  <list> is a comma or semicolon separated list of: cpu,gpu,memory,motherboard,storage,network,battery,controller,psu,all");
         Console.WriteLine("Defaults: --mode once --components all");
         Console.WriteLine(
             "If --mode is timed, --interval defaults to 1000 milliseconds. Minimum interval is 50ms.");
         Console.WriteLine("\nExamples:");
-        Console.WriteLine("  HardwareInfo.exe");
-        Console.WriteLine("  HardwareInfo.exe --mode timed --interval 500");
-        Console.WriteLine("  HardwareInfo.exe --components cpu,gpu,network");
+        Console.WriteLine("  LynxHardwareCLI.exe");
+        Console.WriteLine("  LynxHardwareCLI.exe --mode timed --interval 500");
+        Console.WriteLine("  LynxHardwareCLI.exe --components cpu,gpu,network");
         Console.WriteLine(
-            "  HardwareInfo.exe --mode timed --interval 2000 --components memory;storage");
+            "  LynxHardwareCLI.exe --mode timed --interval 2000 --components memory;storage");
     }
 }

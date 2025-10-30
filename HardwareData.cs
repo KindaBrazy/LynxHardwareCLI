@@ -27,4 +27,7 @@ public class HardwareReport
     public List<HardwareItemInfo> Motherboard { get; set; } = new();
     public List<HardwareItemInfo> Storage { get; set; } = new();
     public List<HardwareItemInfo> Network { get; set; } = new();
+    public List<HardwareItemInfo> Battery { get; set; } = new();
+    public List<HardwareItemInfo> Controller { get; set; } = new();
+    public List<HardwareItemInfo> Psu { get; set; } = new();
 }
