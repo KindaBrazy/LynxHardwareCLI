@@ -25,10 +25,10 @@ or scripts.
 
 ## Prerequisites
 
-- **.NET 9.0 SDK or Runtime:**
-    * To build the project, you need the **.NET 9.0 SDK**.
-    * To run the compiled executable, users need the **.NET 9.0 Runtime** installed on their system.
-    * Download from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/9.0)
+- **.NET 10.0 SDK or Runtime:**
+    * To build the project, you need the **.NET 10.0 SDK**.
+    * To run the compiled executable, users need the **.NET 10.0 Runtime** installed on their system.
+    * Download from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 ## How to Build
 
@@ -45,8 +45,8 @@ or scripts.
    ```bash
    dotnet build LynxHardwareCLI.csproj -c Release
    ```
-   The executable will be located in `bin/Release/net9.0/LynxHardwareCLI.exe` (Windows) or
-   `bin/Release/net9.0/LynxHardwareCLI` (Linux/macOS).
+   The executable will be located in `bin/Release/net10.0/LynxHardwareCLI.exe` (Windows) or
+   `bin/Release/net10.0/LynxHardwareCLI` (Linux/macOS).
 
 ## How to Run
 
