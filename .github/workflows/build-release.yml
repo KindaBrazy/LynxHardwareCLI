@@ -6,7 +6,7 @@ on:
       projectVersion:
         description: 'Project version for the release'
         required: true
-        default: 'v0.9.1'
+        default: 'v0.11.0'
 
 env:
   PROJECT_NAME_FIXED: LynxHardwareCLI
@@ -50,7 +50,7 @@ jobs:
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore dependencies
         run: dotnet restore
